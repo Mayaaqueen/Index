@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pivex Explorer - Blockchain Explorer</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fas fa-cube"></i>
+                <a href="/" class="logo-text">Pivex Explorer</a>
+            </div>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/blocks" class="nav-link">Blocks</a>
+                <a href="/txs" class="nav-link">Transactions</a>
+                <a href="/contracts" class="nav-link">Contracts</a>
+                <a href="/tokens" class="nav-link">Tokens</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Search Section -->
+    <div class="search-section">
+        <div class="container">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search by Address / Txn Hash / Block / Token">
+                <button class="search-btn" onclick="performSearch()">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div id="content">
+            <!-- Home Page -->
+            <div id="home-page" class="page active">
+                <!-- Network Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-cube"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="latestBlock">Loading...</h3>
+                            <p>Latest Block</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-gas-pump"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>150M</h3>
+                            <p>Gas Limit</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-exchange-alt"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="totalTxs">Loading...</h3>
+                            <p>Total Transactions</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="activeAddresses">1,234</h3>
+                            <p>Active Addresses</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Latest Blocks & Transactions -->
+                <div class="content-grid">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-cubes"></i> Latest Blocks</h2>
+                            <a href="/blocks" class="view-all">View All</a>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Block</th>
+                                        <th>Age</th>
+                                        <th>Txns</th>
+                                        <th>Gas Used</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="latestBlocksTable">
+                                    <tr><td colspan="4" class="loading">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-exchange-alt"></i> Latest Transactions</h2>
+                            <a href="/txs" class="view-all">View All</a>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Txn Hash</th>
+                                        <th>From</th>
+                                        <th>To</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="latestTxsTable">
+                                    <tr><td colspan="4" class="loading">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Address Page -->
+            <div id="address-page" class="page">
+                <div class="page-header">
+                    <h1><i class="fas fa-wallet"></i> Address</h1>
+                    <div class="address-info">
+                        <span id="addressValue" class="address-hash"></span>
+                        <button class="copy-btn" onclick="copyToClipboard('addressValue')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="address-overview">
+                    <div class="overview-grid">
+                        <div class="overview-card">
+                            <div class="overview-label">Balance</div>
+                            <div class="overview-value" id="addressBalance">0 ETH</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">Transactions</div>
+                            <div class="overview-value" id="addressTxCount">0</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">Type</div>
+                            <div class="overview-value" id="addressType">EOA</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">First Seen</div>
+                            <div class="overview-value" id="addressFirstSeen">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Address Tabs -->
+                <div class="tabs">
+                    <button class="tab active" onclick="showAddressTab('transactions')">
+                        <i class="fas fa-exchange-alt"></i> Transactions
+                    </button>
+                    <button class="tab" onclick="showAddressTab('internal')">
+                        <i class="fas fa-code-branch"></i> Internal Txns
+                    </button>
+                    <button class="tab" onclick="showAddressTab('tokens')" id="tokensTab" style="display: none;">
+                        <i class="fas fa-coins"></i> Token Transfers
+                    </button>
+                    <button class="tab" onclick="showAddressTab('contract')" id="contractTab" style="display: none;">
+                        <i class="fas fa-file-contract"></i> Contract
+                    </button>
+                </div>
+
+                <div class="tab-content">
+                    <div id="transactions-tab" class="tab-pane active">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Txn Hash</th>
+                                        <th>Block</th>
+                                        <th>Age</th>
+                                        <th>From</th>
+                                        <th>To</th>
+                                        <th>Value</th>
+                                        <th>Fee</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="addressTxsTable">
+                                    <tr><td colspan="7" class="loading">Loading transactions...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="pagination" id="txsPagination"></div>
+                    </div>
+
+                    <div id="internal-tab" class="tab-pane">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Parent Txn Hash</th>
+                                        <th>Block</th>
+                                        <th>Age</th>
+                                        <th>From</th>
+                                        <th>To</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="internalTxsTable">
+                                    <tr><td colspan="6" class="no-data">No internal transactions found</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="tokens-tab" class="tab-pane">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Txn Hash</th>
+                                        <th>Age</th>
+                                        <th>From</th>
+                                        <th>To</th>
+                                        <th>Token</th>
+                                        <th>Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tokenTxsTable">
+                                    <tr><td colspan="6" class="loading">Loading token transfers...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="contract-tab" class="tab-pane">
+                        <div class="contract-info">
+                            <div class="contract-section">
+                                <h3>Contract Information</h3>
+                                <div class="contract-details" id="contractDetails">
+                                    <div class="detail-row">
+                                        <span class="detail-label">Contract Name:</span>
+                                        <span class="detail-value" id="contractName">Unknown</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="detail-label">Compiler Version:</span>
+                                        <span class="detail-value" id="contractCompiler">Not Verified</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="detail-label">Optimization:</span>
+                                        <span class="detail-value" id="contractOptimization">Unknown</span>
+                                    </div>
+                                </div>
+                                <button class="verify-btn" onclick="showVerifyContract()">
+                                    <i class="fas fa-check-circle"></i> Verify Contract
+                                </button>
+                            </div>
+
+                            <div class="contract-section">
+                                <h3>Contract Source Code</h3>
+                                <div class="code-container">
+                                    <pre id="contractCode">Contract source code not verified</pre>
+                                </div>
+                            </div>
+
+                            <div class="contract-section">
+                                <h3>Contract ABI</h3>
+                                <div class="code-container">
+                                    <pre id="contractABI">Contract ABI not available</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transaction Page -->
+            <div id="transaction-page" class="page">
+                <div class="page-header">
+                    <h1><i class="fas fa-exchange-alt"></i> Transaction Details</h1>
+                    <div class="tx-status" id="txStatus">
+                        <span class="status-badge" id="statusBadge">Pending</span>
+                    </div>
+                </div>
+
+                <div class="tx-overview">
+                    <div class="overview-grid">
+                        <div class="overview-card full-width">
+                            <div class="overview-label">Transaction Hash</div>
+                            <div class="overview-value hash" id="txHash">-</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">Status</div>
+                            <div class="overview-value" id="txStatusText">Pending</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">Block</div>
+                            <div class="overview-value" id="txBlock">-</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">Timestamp</div>
+                            <div class="overview-value" id="txTimestamp">-</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">From</div>
+                            <div class="overview-value address" id="txFrom">-</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">To</div>
+                            <div class="overview-value address" id="txTo">-</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">Value</div>
+                            <div class="overview-value" id="txValue">0 ETH</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">Transaction Fee</div>
+                            <div class="overview-value" id="txFee">0 ETH</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">Gas Price</div>
+                            <div class="overview-value" id="txGasPrice">0 Gwei</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">Gas Used</div>
+                            <div class="overview-value" id="txGasUsed">0</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">Gas Limit</div>
+                            <div class="overview-value" id="txGasLimit">0</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">Nonce</div>
+                            <div class="overview-value" id="txNonce">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transaction Tabs -->
+                <div class="tabs">
+                    <button class="tab active" onclick="showTxTab('overview')">
+                        <i class="fas fa-info-circle"></i> Overview
+                    </button>
+                    <button class="tab" onclick="showTxTab('logs')" id="logsTab">
+                        <i class="fas fa-list"></i> Logs
+                    </button>
+                    <button class="tab" onclick="showTxTab('internal')" id="internalTxTab">
+                        <i class="fas fa-code-branch"></i> Internal Txns
+                    </button>
+                </div>
+
+                <div class="tab-content">
+                    <div id="overview-tab" class="tab-pane active">
+                        <div class="tx-details">
+                            <div class="detail-section">
+                                <h3>Input Data</h3>
+                                <div class="code-container">
+                                    <pre id="txInputData">0x</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="logs-tab" class="tab-pane">
+                        <div class="logs-container" id="txLogs">
+                            <div class="no-data">No logs found for this transaction</div>
+                        </div>
+                    </div>
+
+                    <div id="internal-tab" class="tab-pane">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>From</th>
+                                        <th>To</th>
+                                        <th>Value</th>
+                                        <th>Gas</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="txInternalTable">
+                                    <tr><td colspan="5" class="no-data">No internal transactions found</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block Page -->
+            <div id="block-page" class="page">
+                <div class="page-header">
+                    <h1><i class="fas fa-cube"></i> Block Details</h1>
+                    <div class="block-nav">
+                        <button class="nav-btn" onclick="navigateBlock(-1)">
+                            <i class="fas fa-chevron-left"></i> Prev
+                        </button>
+                        <span id="blockNumber">0</span>
+                        <button class="nav-btn" onclick="navigateBlock(1)">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="block-overview">
+                    <div class="overview-grid">
+                        <div class="overview-card">
+                            <div class="overview-label">Block Height</div>
+                            <div class="overview-value" id="blockHeight">0</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">Timestamp</div>
+                            <div class="overview-value" id="blockTimestamp">-</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">Transactions</div>
+                            <div class="overview-value" id="blockTxCount">0</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">Miner</div>
+                            <div class="overview-value address" id="blockMiner">-</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">Gas Used</div>
+                            <div class="overview-value" id="blockGasUsed">0</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="overview-label">Gas Limit</div>
+                            <div class="overview-value" id="blockGasLimit">150,000,000</div>
+                        </div>
+                        <div class="overview-card full-width">
+                            <div class="overview-label">Block Hash</div>
+                            <div class="overview-value hash" id="blockHash">-</div>
+                        </div>
+                        <div class="overview-card full-width">
+                            <div class="overview-label">Parent Hash</div>
+                            <div class="overview-value hash" id="blockParentHash">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="block-transactions">
+                    <h3>Transactions in this Block</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Txn Hash</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Value</th>
+                                    <th>Gas Used</th>
+                                </tr>
+                            </thead>
+                            <tbody id="blockTxsTable">
+                                <tr><td colspan="5" class="loading">Loading transactions...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contract Verification Modal -->
+    <div id="verifyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Verify Contract</h2>
+                <span class="close" onclick="closeVerifyModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="verifyForm">
+                    <div class="form-group">
+                        <label>Contract Name</label>
+                        <input type="text" id="verifyContractName" placeholder="MyContract" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Compiler Version</label>
+                        <select id="verifyCompiler" required>
+                            <option value="">Select Compiler</option>
+                            <option value="v0.8.19">v0.8.19+commit.7dd6d404</option>
+                            <option value="v0.8.18">v0.8.18+commit.87f61d96</option>
+                            <option value="v0.8.17">v0.8.17+commit.8df45f5f</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Optimization</label>
+                        <select id="verifyOptimization" required>
+                            <option value="false">No</option>
+                            <option value="true">Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Source Code</label>
+                        <textarea id="verifySourceCode" placeholder="Paste your Solidity source code here..." required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Constructor Arguments (if any)</label>
+                        <input type="text" id="verifyConstructorArgs" placeholder="0x...">
+                    </div>
+                    <button type="submit" class="verify-submit-btn">
+                        <i class="fas fa-check"></i> Verify and Publish
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
