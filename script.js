@@ -679,3 +679,281 @@ window.onclick = (event) => {
     closeVerifyModal()
   }
 }
+
+// Dropdown menu functions
+function toggleMenu() {
+  const dropdown = document.getElementById("dropdownMenu")
+  dropdown.classList.toggle("active")
+}
+
+// Close dropdown when clicking outside
+document.addEventListener("click", (event) => {
+  const dropdown = document.getElementById("dropdownMenu")
+  const menuBtn = document.querySelector(".menu-btn")
+
+  if (!dropdown.contains(event.target) && !menuBtn.contains(event.target)) {
+    dropdown.classList.remove("active")
+  }
+})
+
+// Functions for navigation menu items
+function showBlocksList() {
+  // Show a simple blocks list page
+  document.querySelectorAll(".page").forEach((page) => page.classList.remove("active"))
+
+  // Create or show blocks list
+  let blocksListPage = document.getElementById("blocks-list-page")
+  if (!blocksListPage) {
+    blocksListPage = document.createElement("div")
+    blocksListPage.id = "blocks-list-page"
+    blocksListPage.className = "page"
+    blocksListPage.innerHTML = `
+      <div class="page-header">
+        <h1><i class="fas fa-cubes"></i> All Blocks</h1>
+      </div>
+      <div class="content-card">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Block</th>
+                <th>Age</th>
+                <th>Txns</th>
+                <th>Gas Used</th>
+                <th>Miner</th>
+              </tr>
+            </thead>
+            <tbody id="allBlocksTable">
+              <tr><td colspan="5" class="loading">Loading blocks...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `
+    document.getElementById("content").appendChild(blocksListPage)
+  }
+
+  blocksListPage.classList.add("active")
+  loadAllBlocks()
+}
+
+function showTransactionsList() {
+  // Show a simple transactions list page
+  document.querySelectorAll(".page").forEach((page) => page.classList.remove("active"))
+
+  let txsListPage = document.getElementById("txs-list-page")
+  if (!txsListPage) {
+    txsListPage = document.createElement("div")
+    txsListPage.id = "txs-list-page"
+    txsListPage.className = "page"
+    txsListPage.innerHTML = `
+      <div class="page-header">
+        <h1><i class="fas fa-exchange-alt"></i> All Transactions</h1>
+      </div>
+      <div class="content-card">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Txn Hash</th>
+                <th>Block</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody id="allTxsTable">
+              <tr><td colspan="5" class="loading">Loading transactions...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `
+    document.getElementById("content").appendChild(txsListPage)
+  }
+
+  txsListPage.classList.add("active")
+  loadAllTransactions()
+}
+
+function showContractsList() {
+  // Show contracts list page
+  document.querySelectorAll(".page").forEach((page) => page.classList.remove("active"))
+
+  let contractsListPage = document.getElementById("contracts-list-page")
+  if (!contractsListPage) {
+    contractsListPage = document.createElement("div")
+    contractsListPage.id = "contracts-list-page"
+    contractsListPage.className = "page"
+    contractsListPage.innerHTML = `
+      <div class="page-header">
+        <h1><i class="fas fa-file-contract"></i> Smart Contracts</h1>
+      </div>
+      <div class="content-card">
+        <div class="card-header">
+          <h2>Verified Contracts</h2>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Address</th>
+                <th>Contract Name</th>
+                <th>Compiler</th>
+                <th>Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="4" class="no-data">No verified contracts found</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `
+    document.getElementById("content").appendChild(contractsListPage)
+  }
+
+  contractsListPage.classList.add("active")
+}
+
+function showTokensList() {
+  // Show tokens list page
+  document.querySelectorAll(".page").forEach((page) => page.classList.remove("active"))
+
+  let tokensListPage = document.getElementById("tokens-list-page")
+  if (!tokensListPage) {
+    tokensListPage = document.createElement("div")
+    tokensListPage.id = "tokens-list-page"
+    tokensListPage.className = "page"
+    tokensListPage.innerHTML = `
+      <div class="page-header">
+        <h1><i class="fas fa-coins"></i> Tokens</h1>
+      </div>
+      <div class="content-card">
+        <div class="card-header">
+          <h2>ERC-20 Tokens</h2>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Token</th>
+                <th>Symbol</th>
+                <th>Address</th>
+                <th>Holders</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="4" class="no-data">No tokens found</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `
+    document.getElementById("content").appendChild(tokensListPage)
+  }
+
+  tokensListPage.classList.add("active")
+}
+
+async function loadAllBlocks() {
+  const tbody = document.getElementById("allBlocksTable")
+  if (!tbody) return
+
+  tbody.innerHTML = '<tr><td colspan="5" class="loading">Loading blocks...</td></tr>'
+
+  try {
+    let blocksHtml = ""
+    for (let i = 0; i < 25; i++) {
+      const blockNumber = explorer.latestBlockNumber - i
+      if (blockNumber < 0) break
+
+      const block = await explorer.rpcCall("eth_getBlockByNumber", [`0x${blockNumber.toString(16)}`, true])
+
+      if (block) {
+        const timestamp = Number.parseInt(block.timestamp, 16)
+        const age = explorer.getTimeAgo(timestamp)
+        const txCount = block.transactions ? block.transactions.length : 0
+        const gasUsed = Number.parseInt(block.gasUsed, 16)
+        const gasLimit = Number.parseInt(block.gasLimit, 16)
+        const gasPercent = ((gasUsed / gasLimit) * 100).toFixed(1)
+
+        blocksHtml += `
+          <tr>
+            <td>
+              <a href="#" class="clickable" onclick="explorer.navigateTo('/block/${blockNumber}'); return false;">
+                ${blockNumber}
+              </a>
+            </td>
+            <td>${age}</td>
+            <td>${txCount}</td>
+            <td>${gasUsed.toLocaleString()} (${gasPercent}%)</td>
+            <td>
+              <a href="#" class="address" onclick="explorer.navigateTo('/address/${block.miner}'); return false;">
+                ${explorer.truncateHash(block.miner)}
+              </a>
+            </td>
+          </tr>
+        `
+      }
+    }
+    tbody.innerHTML = blocksHtml || '<tr><td colspan="5" class="no-data">No blocks found</td></tr>'
+  } catch (error) {
+    tbody.innerHTML = '<tr><td colspan="5" class="no-data">Error loading blocks</td></tr>'
+  }
+}
+
+async function loadAllTransactions() {
+  const tbody = document.getElementById("allTxsTable")
+  if (!tbody) return
+
+  tbody.innerHTML = '<tr><td colspan="5" class="loading">Loading transactions...</td></tr>'
+
+  try {
+    let txsHtml = ""
+    let txCount = 0
+
+    for (let i = 0; i < 10 && txCount < 25; i++) {
+      const blockNumber = explorer.latestBlockNumber - i
+      if (blockNumber < 0) break
+
+      const block = await explorer.rpcCall("eth_getBlockByNumber", [`0x${blockNumber.toString(16)}`, true])
+
+      if (block && block.transactions) {
+        for (const tx of block.transactions) {
+          if (txCount >= 25) break
+
+          const value = Number.parseInt(tx.value, 16) / Math.pow(10, 18)
+
+          txsHtml += `
+            <tr>
+              <td>
+                <a href="#" class="clickable hash" onclick="explorer.navigateTo('/tx/${tx.hash}'); return false;">
+                  ${explorer.truncateHash(tx.hash)}
+                </a>
+              </td>
+              <td>
+                <a href="#" class="clickable" onclick="explorer.navigateTo('/block/${blockNumber}'); return false;">
+                  ${blockNumber}
+                </a>
+              </td>
+              <td>
+                <a href="#" class="address" onclick="explorer.navigateTo('/address/${tx.from}'); return false;">
+                  ${explorer.truncateHash(tx.from)}
+                </a>
+              </td>
+              <td>
+                ${tx.to ? `<a href="#" class="address" onclick="explorer.navigateTo('/address/${tx.to}'); return false;">${explorer.truncateHash(tx.to)}</a>` : "Contract Creation"}
+              </td>
+              <td>${value.toFixed(4)} ETH</td>
+            </tr>
+          `
+          txCount++
+        }
+      }
+    }
+    tbody.innerHTML = txsHtml || '<tr><td colspan="5" class="no-data">No transactions found</td></tr>'
+  } catch (error) {
+    tbody.innerHTML = '<tr><td colspan="5" class="no-data">Error loading transactions</td></tr>'
+  }
+}
