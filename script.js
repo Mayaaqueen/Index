@@ -33,8 +33,8 @@ class PivexExplorer {
       this.verifyContract()
     })
 
-    // Handle browser back/forward
-    window.addEventListener("popstate", () => {
+    // Handle hash change instead of popstate
+    window.addEventListener("hashchange", () => {
       this.handleRoute()
     })
   }
@@ -45,15 +45,15 @@ class PivexExplorer {
   }
 
   handleRoute() {
-    const path = window.location.pathname
-    const segments = path.split("/").filter((s) => s)
+    const hash = window.location.hash.slice(1) || "/"
+    const segments = hash.split("/").filter((s) => s)
 
     // Hide all pages
     document.querySelectorAll(".page").forEach((page) => {
       page.classList.remove("active")
     })
 
-    if (segments.length === 0) {
+    if (segments.length === 0 || segments[0] === "") {
       // Home page
       document.getElementById("home-page").classList.add("active")
     } else if (segments[0] === "address" && segments[1]) {
@@ -78,7 +78,7 @@ class PivexExplorer {
   }
 
   navigateTo(path) {
-    window.history.pushState({}, "", path)
+    window.location.hash = path
     this.handleRoute()
   }
 
@@ -121,8 +121,39 @@ class PivexExplorer {
 
       document.getElementById("latestBlock").textContent = this.latestBlockNumber.toLocaleString()
       document.getElementById("totalTxs").textContent = (this.latestBlockNumber * 2).toLocaleString()
+
+      // Calculate active addresses from recent blocks
+      await this.calculateActiveAddresses()
     } catch (error) {
       console.error("Error loading network stats:", error)
+    }
+  }
+
+  async calculateActiveAddresses() {
+    try {
+      const uniqueAddresses = new Set()
+
+      // Check last 10 blocks for unique addresses
+      for (let i = 0; i < 10; i++) {
+        const blockNumber = this.latestBlockNumber - i
+        if (blockNumber < 0) break
+
+        const block = await this.rpcCall("eth_getBlockByNumber", [`0x${blockNumber.toString(16)}`, true])
+
+        if (block && block.transactions) {
+          block.transactions.forEach((tx) => {
+            uniqueAddresses.add(tx.from.toLowerCase())
+            if (tx.to) {
+              uniqueAddresses.add(tx.to.toLowerCase())
+            }
+          })
+        }
+      }
+
+      document.getElementById("activeAddresses").textContent = uniqueAddresses.size.toLocaleString()
+    } catch (error) {
+      console.error("Error calculating active addresses:", error)
+      document.getElementById("activeAddresses").textContent = "Error"
     }
   }
 
@@ -147,7 +178,7 @@ class PivexExplorer {
           blocksHtml += `
                         <tr>
                             <td>
-                                <a href="/block/${blockNumber}" class="clickable" onclick="explorer.navigateTo('/block/${blockNumber}'); return false;">
+                                <a href="#/block/${blockNumber}" class="clickable" onclick="explorer.navigateTo('/block/${blockNumber}'); return false;">
                                     ${blockNumber}
                                 </a>
                             </td>
@@ -185,17 +216,17 @@ class PivexExplorer {
             txsHtml += `
                             <tr>
                                 <td>
-                                    <a href="/tx/${tx.hash}" class="clickable hash" onclick="explorer.navigateTo('/tx/${tx.hash}'); return false;">
+                                    <a href="#/tx/${tx.hash}" class="clickable hash" onclick="explorer.navigateTo('/tx/${tx.hash}'); return false;">
                                         ${this.truncateHash(tx.hash)}
                                     </a>
                                 </td>
                                 <td>
-                                    <a href="/address/${tx.from}" class="address" onclick="explorer.navigateTo('/address/${tx.from}'); return false;">
+                                    <a href="#/address/${tx.from}" class="address" onclick="explorer.navigateTo('/address/${tx.from}'); return false;">
                                         ${this.truncateHash(tx.from)}
                                     </a>
                                 </td>
                                 <td>
-                                    ${tx.to ? `<a href="/address/${tx.to}" class="address" onclick="explorer.navigateTo('/address/${tx.to}'); return false;">${this.truncateHash(tx.to)}</a>` : "Contract Creation"}
+                                    ${tx.to ? `<a href="#/address/${tx.to}" class="address" onclick="explorer.navigateTo('/address/${tx.to}'); return false;">${this.truncateHash(tx.to)}</a>` : "Contract Creation"}
                                 </td>
                                 <td>${value.toFixed(4)} ETH</td>
                             </tr>
@@ -277,23 +308,23 @@ class PivexExplorer {
               txsHtml += `
                                 <tr>
                                     <td>
-                                        <a href="/tx/${tx.hash}" class="clickable hash" onclick="explorer.navigateTo('/tx/${tx.hash}'); return false;">
+                                        <a href="#/tx/${tx.hash}" class="clickable hash" onclick="explorer.navigateTo('/tx/${tx.hash}'); return false;">
                                             ${this.truncateHash(tx.hash)}
                                         </a>
                                     </td>
                                     <td>
-                                        <a href="/block/${blockNumber}" class="clickable" onclick="explorer.navigateTo('/block/${blockNumber}'); return false;">
+                                        <a href="#/block/${blockNumber}" class="clickable" onclick="explorer.navigateTo('/block/${blockNumber}'); return false;">
                                             ${blockNumber}
                                         </a>
                                     </td>
                                     <td>${age}</td>
                                     <td>
-                                        <a href="/address/${tx.from}" class="address" onclick="explorer.navigateTo('/address/${tx.from}'); return false;">
+                                        <a href="#/address/${tx.from}" class="address" onclick="explorer.navigateTo('/address/${tx.from}'); return false;">
                                             ${this.truncateHash(tx.from)}
                                         </a>
                                     </td>
                                     <td>
-                                        ${tx.to ? `<a href="/address/${tx.to}" class="address" onclick="explorer.navigateTo('/address/${tx.to}'); return false;">${this.truncateHash(tx.to)}</a>` : "Contract Creation"}
+                                        ${tx.to ? `<a href="#/address/${tx.to}" class="address" onclick="explorer.navigateTo('/address/${tx.to}'); return false;">${this.truncateHash(tx.to)}</a>` : "Contract Creation"}
                                     </td>
                                     <td>${value.toFixed(6)} ETH</td>
                                     <td>${fee.toFixed(6)} ETH</td>
@@ -367,12 +398,12 @@ class PivexExplorer {
       document.getElementById("statusBadge").className = `status-badge status-${status.toLowerCase()}`
 
       document.getElementById("txBlock").innerHTML =
-        `<a href="/block/${Number.parseInt(tx.blockNumber, 16)}" class="clickable" onclick="explorer.navigateTo('/block/${Number.parseInt(tx.blockNumber, 16)}'); return false;">${Number.parseInt(tx.blockNumber, 16)}</a>`
+        `<a href="#/block/${Number.parseInt(tx.blockNumber, 16)}" class="clickable" onclick="explorer.navigateTo('/block/${Number.parseInt(tx.blockNumber, 16)}'); return false;">${Number.parseInt(tx.blockNumber, 16)}</a>`
       document.getElementById("txTimestamp").textContent = timestamp ? new Date(timestamp * 1000).toLocaleString() : "-"
       document.getElementById("txFrom").innerHTML =
-        `<a href="/address/${tx.from}" class="address" onclick="explorer.navigateTo('/address/${tx.from}'); return false;">${tx.from}</a>`
+        `<a href="#/address/${tx.from}" class="address" onclick="explorer.navigateTo('/address/${tx.from}'); return false;">${tx.from}</a>`
       document.getElementById("txTo").innerHTML = tx.to
-        ? `<a href="/address/${tx.to}" class="address" onclick="explorer.navigateTo('/address/${tx.to}'); return false;">${tx.to}</a>`
+        ? `<a href="#/address/${tx.to}" class="address" onclick="explorer.navigateTo('/address/${tx.to}'); return false;">${tx.to}</a>`
         : "Contract Creation"
       document.getElementById("txValue").textContent = `${value.toFixed(6)} ETH`
       document.getElementById("txFee").textContent = `${fee.toFixed(6)} ETH`
@@ -444,7 +475,7 @@ class PivexExplorer {
       document.getElementById("blockTimestamp").textContent = new Date(timestamp * 1000).toLocaleString()
       document.getElementById("blockTxCount").textContent = txCount
       document.getElementById("blockMiner").innerHTML =
-        `<a href="/address/${block.miner}" class="address" onclick="explorer.navigateTo('/address/${block.miner}'); return false;">${block.miner}</a>`
+        `<a href="#/address/${block.miner}" class="address" onclick="explorer.navigateTo('/address/${block.miner}'); return false;">${block.miner}</a>`
       document.getElementById("blockGasUsed").textContent =
         `${gasUsed.toLocaleString()} (${((gasUsed / gasLimit) * 100).toFixed(2)}%)`
       document.getElementById("blockGasLimit").textContent = gasLimit.toLocaleString()
@@ -478,17 +509,17 @@ class PivexExplorer {
         txsHtml += `
                     <tr>
                         <td>
-                            <a href="/tx/${tx.hash}" class="clickable hash" onclick="explorer.navigateTo('/tx/${tx.hash}'); return false;">
+                            <a href="#/tx/${tx.hash}" class="clickable hash" onclick="explorer.navigateTo('/tx/${tx.hash}'); return false;">
                                 ${this.truncateHash(tx.hash)}
                             </a>
                         </td>
                         <td>
-                            <a href="/address/${tx.from}" class="address" onclick="explorer.navigateTo('/address/${tx.from}'); return false;">
+                            <a href="#/address/${tx.from}" class="address" onclick="explorer.navigateTo('/address/${tx.from}'); return false;">
                                 ${this.truncateHash(tx.from)}
                             </a>
                         </td>
                         <td>
-                            ${tx.to ? `<a href="/address/${tx.to}" class="address" onclick="explorer.navigateTo('/address/${tx.to}'); return false;">${this.truncateHash(tx.to)}</a>` : "Contract Creation"}
+                            ${tx.to ? `<a href="#/address/${tx.to}" class="address" onclick="explorer.navigateTo('/address/${tx.to}'); return false;">${this.truncateHash(tx.to)}</a>` : "Contract Creation"}
                         </td>
                         <td>${value.toFixed(6)} ETH</td>
                         <td>${gasUsed.toLocaleString()}</td>
@@ -641,6 +672,25 @@ class PivexExplorer {
         this.loadLatestTransactions()
       }
     }, 30000) // Refresh every 30 seconds
+  }
+
+  async performSearch() {
+    const query = document.getElementById("searchInput").value.trim()
+    if (!query) return
+
+    // Detect search type and navigate
+    if (query.startsWith("0x") && query.length === 66) {
+      // Transaction hash
+      this.navigateTo(`/tx/${query}`)
+    } else if (query.startsWith("0x") && query.length === 42) {
+      // Address
+      this.navigateTo(`/address/${query}`)
+    } else if (!isNaN(query)) {
+      // Block number
+      this.navigateTo(`/block/${query}`)
+    } else {
+      alert("Invalid search query. Please enter a valid address, transaction hash, or block number.")
+    }
   }
 }
 
@@ -881,7 +931,7 @@ async function loadAllBlocks() {
         blocksHtml += `
           <tr>
             <td>
-              <a href="#" class="clickable" onclick="explorer.navigateTo('/block/${blockNumber}'); return false;">
+              <a href="#/block/${blockNumber}" class="clickable" onclick="explorer.navigateTo('/block/${blockNumber}'); return false;">
                 ${blockNumber}
               </a>
             </td>
@@ -889,7 +939,7 @@ async function loadAllBlocks() {
             <td>${txCount}</td>
             <td>${gasUsed.toLocaleString()} (${gasPercent}%)</td>
             <td>
-              <a href="#" class="address" onclick="explorer.navigateTo('/address/${block.miner}'); return false;">
+              <a href="#/address/${block.miner}" class="address" onclick="explorer.navigateTo('/address/${block.miner}'); return false;">
                 ${explorer.truncateHash(block.miner)}
               </a>
             </td>
@@ -928,22 +978,22 @@ async function loadAllTransactions() {
           txsHtml += `
             <tr>
               <td>
-                <a href="#" class="clickable hash" onclick="explorer.navigateTo('/tx/${tx.hash}'); return false;">
+                <a href="#/tx/${tx.hash}" class="clickable hash" onclick="explorer.navigateTo('/tx/${tx.hash}'); return false;">
                   ${explorer.truncateHash(tx.hash)}
                 </a>
               </td>
               <td>
-                <a href="#" class="clickable" onclick="explorer.navigateTo('/block/${blockNumber}'); return false;">
+                <a href="#/block/${blockNumber}" class="clickable" onclick="explorer.navigateTo('/block/${blockNumber}'); return false;">
                   ${blockNumber}
                 </a>
               </td>
               <td>
-                <a href="#" class="address" onclick="explorer.navigateTo('/address/${tx.from}'); return false;">
+                <a href="#/address/${tx.from}" class="address" onclick="explorer.navigateTo('/address/${tx.from}'); return false;">
                   ${explorer.truncateHash(tx.from)}
                 </a>
               </td>
               <td>
-                ${tx.to ? `<a href="#" class="address" onclick="explorer.navigateTo('/address/${tx.to}'); return false;">${explorer.truncateHash(tx.to)}</a>` : "Contract Creation"}
+                ${tx.to ? `<a href="#/address/${tx.to}" class="address" onclick="explorer.navigateTo('/address/${tx.to}'); return false;">${explorer.truncateHash(tx.to)}</a>` : "Contract Creation"}
               </td>
               <td>${value.toFixed(4)} ETH</td>
             </tr>
